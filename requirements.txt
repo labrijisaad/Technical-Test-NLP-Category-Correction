@@ -1,0 +1,10 @@
+# Add your project dependencies here 
+jupyterlab
+pandas
+numpy
+seaborn
+inflect
+Unidecode
+tqdm
+pyxlsb
+nltk
