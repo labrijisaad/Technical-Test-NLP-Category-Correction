@@ -1,28 +1,12 @@
 # Makefile for Project
 
+# Variables
 VENV_NAME := venv
-
-# Check if the COMSPEC environment variable is set (indicating a Windows system)
-ifdef COMSPEC
-    WARNING_MESSAGE :=
-    DELETE_CMD := Remove-Item -Recurse -Force
-    VENV_ACTIVATE := .\$(VENV_NAME)\Scripts\Activate
-    POWERSHELL := powershell.exe
-else
-    WARNING_MESSAGE := @echo WARNING: These commands are meant to be used on Windows systems.
-    DELETE_CMD := rm -rf
-    VENV_ACTIVATE := source $(VENV_NAME)/bin/activate
-    POWERSHELL := $(VENV_NAME)/Scripts/Activate.ps1
-endif
-
-# Project directories
 DATA_RAW_DIR := data/raw
 DATA_PROCESSED_DIR := data/processed
 DATA_EXTERNAL_DIR := data/external
 NOTEBOOKS_DIR := notebooks
 DOCS_DIR := docs
-
-# Files
 README_FILE := README.md
 CONFIG_FILE := config.yaml
 ENV_FILE := .env
@@ -30,50 +14,82 @@ GITIGNORE_FILE := .gitignore
 REQUIREMENTS_FILE := requirements.txt
 GITKEEP_FILE := .gitkeep
 
-.PHONY: init setup update clean jupyter lint test docs help
+# Detect OS and set commands accordingly
+OSFLAG :=
+ifeq ($(OS),Windows_NT)
+    OSFLAG += -D WIN32
+    ifeq ($(PROCESSOR_ARCHITEW6432),AMD64)
+        OSFLAG += -D AMD64
+    else
+        ifeq ($(PROCESSOR_ARCHITECTURE),AMD64)
+            OSFLAG += -D AMD64
+        endif
+        ifeq ($(PROCESSOR_ARCHITECTURE),x86)
+            OSFLAG += -D IA32
+        endif
+    endif
+    DELETE_CMD := del /F /Q
+    VENV_ACTIVATE := .\$(VENV_NAME)\Scripts\activate
+    MKDIR_CMD := mkdir
+    POWERSHELL_CMD := powershell
+else
+    DELETE_CMD := rm -rf
+    VENV_ACTIVATE := source $(VENV_NAME)/bin/activate
+    MKDIR_CMD := mkdir -p
+    POWERSHELL_CMD := pwsh
+endif
 
-# Add a default target to print a helpful message
+# Phony targets
+.PHONY: init setup update clean jupyter help
+
+# Default target
 .DEFAULT_GOAL := help
 
+# Initialization of project structure and files
 init:
-	@powershell -Command "if (-not (Test-Path '$(DATA_RAW_DIR)')) { mkdir '$(DATA_RAW_DIR)' | Out-Null; New-Item -ItemType file -Path '$(DATA_RAW_DIR)\$(GITKEEP_FILE)' -Force | Out-Null }"
-	@powershell -Command "if (-not (Test-Path '$(DATA_PROCESSED_DIR)')) { mkdir '$(DATA_PROCESSED_DIR)' | Out-Null; New-Item -ItemType file -Path '$(DATA_PROCESSED_DIR)\$(GITKEEP_FILE)' -Force | Out-Null }"
-	@powershell -Command "if (-not (Test-Path '$(DATA_EXTERNAL_DIR)')) { mkdir '$(DATA_EXTERNAL_DIR)' | Out-Null; New-Item -ItemType file -Path '$(DATA_EXTERNAL_DIR)\$(GITKEEP_FILE)' -Force | Out-Null }"
-	@powershell -Command "if (-not (Test-Path '$(NOTEBOOKS_DIR)')) { mkdir '$(NOTEBOOKS_DIR)' | Out-Null; New-Item -ItemType file -Path '$(NOTEBOOKS_DIR)\$(GITKEEP_FILE)' -Force | Out-Null }"
-	@powershell -Command "if (-not (Test-Path '$(DOCS_DIR)')) { mkdir '$(DOCS_DIR)' | Out-Null; New-Item -ItemType file -Path '$(DOCS_DIR)\$(GITKEEP_FILE)' -Force | Out-Null }"
+	@mkdir "$(DATA_RAW_DIR)" "$(DATA_PROCESSED_DIR)" "$(DATA_EXTERNAL_DIR)" "$(NOTEBOOKS_DIR)" "$(DOCS_DIR)" 2> NUL || echo "Directories already exist."
+	@echo. 2> "$(DATA_RAW_DIR)\$(GITKEEP_FILE)" || echo "File $(DATA_RAW_DIR)\$(GITKEEP_FILE) already exists."
+	@echo. 2> "$(DATA_PROCESSED_DIR)\$(GITKEEP_FILE)" || echo "File $(DATA_PROCESSED_DIR)\$(GITKEEP_FILE) already exists."
+	@echo. 2> "$(DATA_EXTERNAL_DIR)\$(GITKEEP_FILE)" || echo "File $(DATA_EXTERNAL_DIR)\$(GITKEEP_FILE) already exists."
+	@echo. 2> "$(NOTEBOOKS_DIR)\$(GITKEEP_FILE)" || echo "File $(NOTEBOOKS_DIR)\$(GITKEEP_FILE) already exists."
+	@echo. 2> "$(DOCS_DIR)\$(GITKEEP_FILE)" || echo "File $(DOCS_DIR)\$(GITKEEP_FILE) already exists."
+	
+	@echo # Project Title > "$(README_FILE)"
+	@echo. >> "$(README_FILE)"
+	@echo ## Connect >> "$(README_FILE)"
+	@echo - 🔗 Feel free to connect with me on [LinkedIn](https://www.linkedin.com/in/labrijisaad/) >> "$(README_FILE)"
+	@echo author: labriji saad > "$(CONFIG_FILE)"
+	@echo # Add your environment variables here > "$(ENV_FILE)"
+	@echo # Add files and directories to ignore in version control > "$(GITIGNORE_FILE)"
+	@echo # Add your project dependencies here > "$(REQUIREMENTS_FILE)"
 	@echo ">>>>>> Project structure initialized successfully <<<<<<"
-	@echo author: labriji saad > $(CONFIG_FILE)
-	@echo # Add your environment variables here > $(ENV_FILE)
-	@echo # Add files and directories to ignore in version control > $(GITIGNORE_FILE)
-	@echo # Add your project dependencies here > $(REQUIREMENTS_FILE)
 
-
+# Setup the virtual environment and install dependencies
 setup:
-	$(WARNING_MESSAGE)
-	@python -m venv $(VENV_NAME) && \
-	$(VENV_NAME)\Scripts\activate && \
-	powershell -Command "& {python -m pip install --upgrade pip; pip install -r requirements.txt}" 
+	@python -m venv $(VENV_NAME)
+	@$(VENV_ACTIVATE) && pip install --upgrade pip && pip install -r $(REQUIREMENTS_FILE)
 	@echo ">>>>>> Environment is ready <<<<<<"
 
+# Update dependencies in the virtual environment
 update:
-	$(VENV_NAME)\Scripts\activate && pip install -r .\requirements.txt
+	@$(VENV_ACTIVATE) && pip install -r $(REQUIREMENTS_FILE)
 	@echo ">>>>>> Dependencies updated <<<<<<"
 
+# Clean up the virtual environment and generated files
 clean:
-	$(WARNING_MESSAGE)
-	@rmdir /s /q $(VENV_NAME)
+	@$(DELETE_CMD) $(VENV_NAME)
 	@echo ">>>>>> Cleaned up environment <<<<<<"
 
+# Activate the virtual environment and run Jupyter Lab
 jupyter:
-	$(WARNING_MESSAGE)
-	@$(VENV_NAME)\Scripts\activate && jupyter lab
+	@$(VENV_ACTIVATE) && jupyter lab
 	@echo ">>>>>> Jupyter Lab is running <<<<<<"
 
+# Display available make targets
 help:
-	$(WARNING_MESSAGE)
-	@echo  Available targets:
-	@echo    make init           - Initialize The project's structure
-	@echo    make setup          - Create a virtual environment and install dependencies
-	@echo    make update         - Update dependencies in the virtual environment
-	@echo    make clean          - Clean up the virtual environment and generated files
-	@echo    make jupyter        - Activate the virtual environment and run Jupyter Lab
+	@echo Available targets:
+	@echo   make init    - Initialize the project's structure
+	@echo   make setup   - Create a virtual environment and install dependencies
+	@echo   make update  - Update dependencies in the virtual environment
+	@echo   make clean   - Clean up the virtual environment and generated files
+	@echo   make jupyter - Activate the virtual environment and run Jupyter Lab
