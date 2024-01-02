@@ -1,1 +1,3 @@
 # Add files and directories to ignore in version control 
+venv/
+.idea
